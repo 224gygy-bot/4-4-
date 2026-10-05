@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사라진 숫자 보석 사건 - 꼬마 탐정 스도쿠</title>
+<!-- PWA 설정: manifest.json, sw.js, icon-192.png, icon-512.png 가 이 파일과 같은 폴더에 있을 때만 동작합니다 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e8a13c">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- iOS 홈 화면 앱 지원 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="꼬마 탐정">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fff8e7; --ink:#4a3b2a; --accent:#e8a13c; --gold:#f5c542;
+  --good:#4caf6d; --bad:#ef7d7d; --card:#fffdf5;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'Gowun Dodum',sans-serif; color:var(--ink);
+  background:#7fb2d9;
+  background-image:repeating-linear-gradient(45deg,#7fb2d9 0 20px,#86badf 20px 40px);
+  min-height:100vh; display:flex; justify-content:center; padding:12px;
+}
+#app{
+  width:100%; max-width:420px; background:var(--paper);
+  background-image:radial-gradient(#00000008 1px,transparent 1px);
+  background-size:8px 8px;
+  border-radius:18px; border:3px solid #b98a4e;
+  box-shadow:0 8px 30px #0004; padding:14px; position:relative;
+}
+h1,h2,h3,.jua{font-family:'Jua',sans-serif;}
+button{font-family:inherit; min-height:48px; min-width:48px; cursor:pointer;
+  border-radius:12px; border:2px solid #b98a4e; background:#ffe9bd; color:var(--ink);
+  font-size:1.05rem; padding:8px 14px; transition:transform .08s;}
+button:active{transform:scale(.96);}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:3px solid #2b7cd3; outline-offset:2px;}
+/* 상단 고정 바 */
+#topbar{position:sticky; top:0; z-index:10; background:var(--paper); border:2px dashed #b98a4e;
+  border-radius:12px; padding:8px; margin-bottom:12px;}
+#topbar .row{display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;}
+#badge{font-size:.85rem; background:#fff; border:1px solid #b98a4e; border-radius:20px; padding:2px 10px;}
+#gold-slots{display:flex; gap:6px; margin:6px 0;}
+.gold-slot{width:44px; height:44px; border-radius:8px; border:2px solid #c9a227; background:#fff;
+  display:flex; align-items:center; justify-content:center; font-family:'Jua'; font-size:1.4rem; color:#c9a227;}
+.gold-slot.filled{background:linear-gradient(145deg,#ffe27a,#f5c542); color:#5b4300; box-shadow:0 0 8px #f5c542;}
+#progress{display:flex; gap:3px;}
+#progress .seg{flex:1; height:10px; border-radius:5px; background:#e5d9c0; border:1px solid #b98a4e;}
+#progress .seg.done{background:var(--good);}
+/* 캐릭터 */
+.char{width:90px; height:90px; flex:none;}
+.chief-speech,.raccoon-speech{display:flex; gap:8px; align-items:flex-end; margin:10px 0;}
+.bubble{background:#fff; border:2px solid #b98a4e; border-radius:14px; padding:10px 12px;
+  font-size:1rem; line-height:1.5; position:relative; flex:1;}
+/* 스도쿠 판 */
+#board{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; max-width:320px; margin:10px auto;}
+#board .cell{aspect-ratio:1; border:2px solid #b98a4e; border-radius:8px; background:var(--card);
+  display:flex; align-items:center; justify-content:center; font-family:'Jua'; font-size:1.7rem; cursor:pointer;}
+#board .cell.blank{background:#fff; color:#2b7cd3;}
+#board .cell.selected{outline:4px solid #e8a13c; background:#fff3d6;}
+#board .cell.mark{border-color:#c2185b; background:#ffe3ee;}
+#board .cell.correct{background:#d8f3dc;}
+#board .cell.wrong{background:#ffdada;}
+#board .cell:nth-child(4n+1){border-left-width:4px;}
+#board .cell:nth-child(-n+4){border-top-width:4px;}
+#board .cell:nth-child(n+13){border-bottom-width:4px;}
+#board .cell:nth-child(4n){border-right-width:4px;}
+#board .cell:nth-child(n+5):nth-child(-n+8){border-bottom-width:4px;}
+/* 숫자 버튼 */
+#numpad{display:flex; gap:8px; justify-content:center; margin:10px 0;}
+#numpad button{width:60px; height:60px; font-family:'Jua'; font-size:1.6rem; background:#fff;}
+/* 퀴즈/선택 */
+.choice{display:block; width:100%; margin:8px 0; font-size:1.15rem; background:#fff;}
+/* 단서 카드 */
+.clue-card{background:linear-gradient(145deg,#fff,#ffeec7); border:2px solid #c9a227; border-radius:12px;
+  padding:8px 12px; margin:6px 0; box-shadow:2px 2px 6px #0002;}
+.clue-card.golden{background:linear-gradient(145deg,#ffe27a,#f5c542); border:3px solid #a67c00;}
+/* 도장 */
+.stamp{display:inline-block; border:4px solid #d33; color:#d33; border-radius:50%;
+  padding:6px 14px; font-family:'Jua'; transform:rotate(-12deg); font-size:1.2rem;
+  animation:stampIn .4s ease;}
+@keyframes stampIn{0%{transform:scale(2.5) rotate(-12deg); opacity:0;}100%{transform:scale(1) rotate(-12deg); opacity:1;}}
+@keyframes pop{0%{transform:scale(.3);}70%{transform:scale(1.15);}100%{transform:scale(1);}}
+.pop{animation:pop .5s ease;}
+/* 돋보기 힌트 버튼 */
+#hint-btn{border-radius:50%; width:56px; height:56px; font-size:1.5rem; background:#dff0ff; border-color:#2b7cd3;}
+#notebook-btn{background:#e6ffe6; border-color:#3a7d44;}
+.toolbar{display:flex; gap:8px; justify-content:center; margin:8px 0;}
+.feedback{border-radius:12px; padding:10px 12px; margin:10px 0; line-height:1.5; display:none;}
+.feedback.ok{display:block; background:#d8f3dc; border:2px solid var(--good);}
+.feedback.no{display:block; background:#ffe3e3; border:2px solid var(--bad);}
+.feedback.hint{display:block; background:#dff0ff; border:2px solid #2b7cd3;}
+.center{text-align:center;}
+.big-btn{font-size:1.2rem; padding:12px 24px; background:var(--accent); color:#fff; border-color:#a86f1e; font-family:'Jua';}
+input[type=text]{min-height:48px; font-size:1.1rem; padding:8px; border-radius:10px; border:2px solid #b98a4e; width:100%; font-family:inherit; background:#fff;}
+details{margin-top:16px; border-top:2px dashed #b98a4e; padding-top:8px; font-size:.9rem;}
+summary{cursor:pointer; min-height:48px; display:flex; align-items:center;}
+table{border-collapse:collapse; width:100%; font-size:.8rem;}
+td,th{border:1px solid #b98a4e; padding:3px 5px;}
+#password-show{font-family:'Jua'; font-size:3rem; letter-spacing:12px; color:#a86f1e; text-align:center;}
+.cert{border:4px double #a86f1e; padding:16px; background:#fffbe8; text-align:center; margin:10px 0;}
+/* 종이 사건파일 느낌으로 밝은 화면 고정 (다크모드에서 글자가 안 보이던 문제 수정) */
+:root{color-scheme:light;}
+/* ===== 훈련 모드 ===== */
+#board.n4{grid-template-columns:repeat(4,1fr); max-width:320px;}
+#board.n6{grid-template-columns:repeat(6,1fr); max-width:330px; gap:3px; width:100%;}
+#board.n6 .cell{font-size:1.25rem; border-radius:6px;}
+#board.n9{grid-template-columns:repeat(9,1fr); max-width:340px; gap:2px; width:100%;}
+#board.n9 .cell{font-size:1rem; border-radius:4px;}
+#board .cell.related{background:#e8f1ff;}
+#board .cell.blank.related{background:#e8f1ff;}
+#board .cell.same-num{background:#cfe3ff; box-shadow:inset 0 0 0 2px #2b7cd3;}
+@keyframes hintFlash{0%,100%{background:#fff;}50%{background:#ffe27a; box-shadow:0 0 14px #f5c542;}}
+#board .cell.hintflash{animation:hintFlash .9s ease 3;}
+#numpad.wrap{flex-wrap:wrap; max-width:360px; margin-left:auto; margin-right:auto;}
+#numpad.wrap button{width:52px; height:52px; font-size:1.3rem;}
+.map-zone{border:2px dashed #b98a4e; border-radius:14px; padding:10px; margin:10px 0; background:#fffdf5;}
+.map-zone h3{margin-bottom:8px;}
+.lv-card{display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+  width:96px; min-height:88px; border-radius:14px; border:3px solid #b98a4e; background:#fff;
+  margin:6px; font-family:'Jua'; position:relative; padding:6px 4px;}
+.lv-card.open{background:#ffe9bd; cursor:pointer;}
+.lv-card.done{background:#d8f3dc; border-color:var(--good); cursor:pointer;}
+.lv-card.locked{background:#e5e0d4; color:#8a8378; border-color:#b0a890; cursor:not-allowed;}
+.lv-card .stars{color:#e8a13c; font-size:.95rem; min-height:1.1em;}
+.lv-card .stampmini{position:absolute; top:-8px; right:-8px; font-size:1.1rem;}
+.lv-row{display:flex; gap:4px;}
+.lv-row.rev{flex-direction:row-reverse;}
+.loading-box{text-align:center; padding:40px 10px;}
+@keyframes spinMag{0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
+.loading-box .mag{display:inline-block; font-size:3rem; animation:spinMag 1.2s linear infinite;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="row">
+      <span id="det-name" class="jua">탐정</span>
+      <span id="badge">🎖️ 아기 탐정</span>
+      <button id="switch-btn" aria-label="탐정 바꾸기" style="min-height:44px; font-size:.95rem; padding:4px 10px;">🔄 바꾸기</button>
+    </div>
+    <div id="gold-slots" aria-label="황금 단서 칸">
+      <div class="gold-slot">?</div><div class="gold-slot">?</div>
+      <div class="gold-slot">?</div><div class="gold-slot">?</div>
+    </div>
+    <div id="progress" aria-label="진행 바"></div>
+  </div>
+  <div id="screen"></div>
+  <details id="parent-guide">
+    <summary class="jua">👨‍👩‍👧 부모님 안내 (눌러서 열기)</summary>
+    <div id="parent-content"></div>
+  </details>
+</div>
+
+<script>
+"use strict";
+/* ================= 미션 데이터 ================= */
+const SOL_A = [[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]];
+const SOL_B = [[2,1,4,3],[3,4,1,2],[1,2,3,4],[4,3,2,1]];
+const SOL_C = [[1,3,4,2],[4,2,1,3],[2,4,3,1],[3,1,2,4]];
+
+const MISSIONS = [
+ { ch:"1장", concept:"스도쿠 규칙 알기", type:"quiz",
+   chief:"첫 임무야! 스도쿠 규칙을 맞혀 볼까?",
+   q:"같은 가로줄에 같은 숫자가 두 번 나와도 될까?",
+   choices:["나와도 돼!","안 돼! 한 번만!"], answer:1,
+   ok:"정답! 같은 줄엔 같은 숫자가 한 번만 나와야 해!",
+   no:"아니야~ 같은 줄에 같은 숫자가 두 개면 너구리가 웃어! 한 번만 나와야 해!",
+   hint:"스도쿠는 같은 숫자가 겹치면 안 되는 게임이야." },
+ { ch:"2장", concept:"가로줄 규칙", type:"fill",
+   chief:"빈칸에 들어갈 숫자를 찾아 줘! 가로줄만 보면 돼.",
+   board:[[1,4,0,2]], singleRow:true, targets:[[0,2]],
+   ok:"멋져! 가로줄에 1, 4, 2가 있으니까 남은 건 3이야! 황금 단서를 찾았어!",
+   no:"음… 이 가로줄에 벌써 그 숫자가 숨어 있어! 다른 숫자를 조사해 볼까?",
+   hint:"빈칸이 있는 가로줄을 처음부터 끝까지 읽어 봐!", golden:0 },
+ { ch:"3장", concept:"세로줄 규칙", type:"fill",
+   chief:"이번엔 세로줄이야! 위에서 아래로 쭉~ 봐 봐.",
+   board:[[4],[1],[0],[3]], singleCol:true, targets:[[2,0]],
+   ok:"완벽해! 세로줄에 4, 1, 3이 있으니 남은 건 2! 세로줄도 같은 숫자는 한 번만!",
+   no:"음… 이 세로줄에 벌써 그 숫자가 있어! 위에서 아래로 다시 세어 볼까?",
+   hint:"빈칸 위아래 세로줄을 쭉 읽어 봐!" },
+ { ch:"4장", concept:"네모 구역 규칙", type:"fill",
+   chief:"네 칸짜리 네모 구역에도 1~4가 한 번씩!",
+   board:[[2,3],[4,0]], box2:true, targets:[[1,1]],
+   ok:"대단해! 네모 구역에 2, 3, 4가 있으니 1! 황금 단서 두 번째야!",
+   no:"음… 이 네모 구역에 벌써 그 숫자가 있어! 네모 안을 다시 봐 봐!",
+   hint:"빈칸이 들어 있는 네모 구역 네 칸을 살펴봐!", golden:1 },
+ { ch:"5장", concept:"틀린 칸 찾기", type:"findwrong",
+   chief:"뒤죽박죽 너구리가 숫자 하나를 몰래 바꿨어! 찾아라!",
+   board:[[1,2,3,4],[3,4,1,2],[2,2,4,3],[4,3,2,1]], wrongCells:[[2,1]], fixTo:1,
+   ok:"찾았다! 이 2는 가로줄에서도, 세로줄에서도 겹쳐! 너구리가 1을 2로 바꿔 놨던 거야!",
+   no:"그 칸은 괜찮아 보여. 같은 숫자가 두 번 겹치는 줄을 찾아 봐!",
+   hint:"세 번째 가로줄에 2가 두 개 있어. 둘 중에 세로줄에서도 겹치는 쪽은 어디일까?" },
+ { ch:"6장", concept:"가로+세로 같이 보기", type:"fill",
+   chief:"이제 가로줄과 세로줄을 같이 보는 거야! 두 칸을 채워 줘.",
+   board:[[1,2,3,4],[3,0,0,2],[2,1,4,3],[4,3,2,1]], targets:[[1,1],[1,2]],
+   solution:SOL_A, goldenCell:[1,1],
+   ok:"명추리야! 가로줄만 보면 4일지 1일지 모르지만, 세로줄까지 보면 답이 보여! 황금 단서 세 번째!",
+   no:"음… 가로줄과 세로줄, 둘 다 맞는지 확인해 봐!",
+   hint:"★ 칸의 가로줄엔 4와 1이 빠졌어. 세로줄을 보면 둘 중 누가 벌써 있을까?", golden:2 },
+ { ch:"7장", concept:"작은 퍼즐", type:"fill",
+   chief:"빈칸이 세 개야! 하나씩 차근차근 풀어 보자.",
+   board:[[1,2,0,4],[0,4,1,2],[2,1,4,3],[4,3,0,1]], targets:[[0,2],[1,0],[3,2]],
+   solution:SOL_A,
+   ok:"훌륭해! 이제 너 혼자서도 풀 수 있겠는걸!",
+   no:"음… 그 칸의 가로줄, 세로줄, 네모 구역을 다시 살펴봐!",
+   hint:"두 번째 가로줄 맨 앞 칸부터 풀어 보는 건 어때?" },
+ { ch:"8장", concept:"암호 쪽지 읽기", type:"code",
+   chief:"너구리가 암호 쪽지를 남겼어! ♥ 칸과 ★ 칸을 순서대로 읽어!",
+   board:SOL_B, marks:[[0,2,"♥"],[1,3,"★"]], answer:"42",
+   q:"♥ 칸 숫자와 ★ 칸 숫자를 순서대로 읽으면 뭐라고 쓰여 있을까? (두 자리 숫자)",
+   ok:"쪽지 해독 성공! ★ 칸의 2가 마지막 황금 단서야!",
+   no:"다시 봐 봐! ♥ 칸이 첫 번째 숫자, ★ 칸이 두 번째 숫자야.",
+   hint:"♥는 맨 위 가로줄에 있어. ★는 두 번째 가로줄 맨 끝!", golden:3 },
+ { ch:"9장", concept:"빈칸 다섯 개 퍼즐", type:"fill",
+   chief:"빈칸이 다섯 개! 어려우면 돋보기를 눌러 봐!",
+   board:[[0,1,4,0],[3,0,1,2],[1,2,0,4],[4,0,2,1]],
+   targets:[[0,0],[0,3],[1,1],[2,2],[3,1]], solution:SOL_B,
+   ok:"대박! 이제 거의 다 왔어! 너구리가 꼼짝 못 하겠는걸!",
+   no:"음… 그 숫자는 이 칸의 가로줄이나 세로줄에 이미 있어!",
+   hint:"맨 위 가로줄부터 차근차근! 1, 4가 있으니 뭐가 빠졌을까?" },
+ { ch:"10장", concept:"최종 대결! 진짜 스도쿠", type:"fill",
+   chief:"마지막이다! 이 판을 다 풀면 너구리를 잡을 수 있어!",
+   board:[[1,0,4,0],[4,0,1,3],[0,4,0,1],[3,1,0,0]],
+   targets:[[0,1],[0,3],[1,1],[2,0],[2,2],[3,2],[3,3]], solution:SOL_C,
+   ok:"해냈다! 완벽한 스도쿠야! 너구리를 찾았어!!",
+   no:"음… 그 칸의 가로줄, 세로줄, 네모 구역을 천천히 다시 봐 봐!",
+   hint:"두 번째 가로줄은 빈칸이 딱 하나야! 거기부터 해 보는 건 어때?" }
+];
+const PASSWORD = "3142";
+const GOLDEN = [3,1,4,2]; // 미션2,4,6,8
+const BADGES = [[0,"🎖️ 아기 탐정"],[3,"🔍 견습 탐정"],[7,"⭐ 꼬마 탐정"],[10,"👑 명탐정"]];
+const CHIEF_SVG = `<svg class="char" viewBox="0 0 100 100" aria-label="대장 탐정">
+<ellipse cx="50" cy="88" rx="26" ry="10" fill="#8a6d4b"/>
+<circle cx="50" cy="48" r="26" fill="#ffdfba"/>
+<path d="M22 40 Q50 18 78 40 L78 34 Q50 8 22 34 Z" fill="#6b4f2a"/>
+<rect x="18" y="36" width="64" height="8" rx="4" fill="#6b4f2a"/>
+<circle cx="41" cy="48" r="3.5" fill="#333"/><circle cx="59" cy="48" r="3.5" fill="#333"/>
+<path d="M42 60 Q50 66 58 60" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+<rect x="34" y="68" width="32" height="22" rx="8" fill="#4a6b8a"/></svg>`;
+const RACCOON_SVG = `<svg class="char" viewBox="0 0 100 100" aria-label="뒤죽박죽 너구리">
+<circle cx="32" cy="26" r="10" fill="#8a7a6a"/><circle cx="68" cy="26" r="10" fill="#8a7a6a"/>
+<circle cx="32" cy="26" r="5" fill="#ffb0b0"/><circle cx="68" cy="26" r="5" fill="#ffb0b0"/>
+<circle cx="50" cy="52" r="30" fill="#a59484"/>
+<ellipse cx="38" cy="50" rx="11" ry="9" fill="#4a4038"/><ellipse cx="62" cy="50" rx="11" ry="9" fill="#4a4038"/>
+<circle cx="38" cy="50" r="3" fill="#fff"/><circle cx="62" cy="50" r="3" fill="#fff"/>
+<ellipse cx="50" cy="66" rx="9" ry="7" fill="#f5e6d8"/>
+<circle cx="50" cy="62" r="3.5" fill="#333"/>
+<path d="M44 70 Q50 75 56 70" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`;
+
+/* ================= 상태 ================= */
+/* ================= 상태 & 탐정 프로필 저장 ================= */
+/* 저장 구조:
+   detectiveSudokuProfiles = { "하은": {state:{...}, train:{...}}, ... } (프로필 맵, 한 키에 저장)
+   detectiveSudokuCurrent  = 현재 활성 프로필 이름
+   기존 키 detectiveSudoku / detectiveSudokuTrain 은 호환을 위해 삭제하지 않고 함께 갱신 */
+let state = { name:"", mission:0, gold:[null,null,null,null], badgeIdx:0, clues:[], finished:false };
+let profiles = {};
+let currentProfile = "";
+const FRESH_STATE = ()=>({ name:"", mission:0, gold:[null,null,null,null], badgeIdx:0, clues:[], finished:false });
+const FRESH_TRAIN = ()=>({ cleared:[], stars:{}, legendBadge:false });
+function loadProfiles(){ try{ const s=localStorage.getItem("detectiveSudokuProfiles");
+  if(s){ const p=JSON.parse(s); if(p&&typeof p==="object"&&!Array.isArray(p)) profiles=p; } }catch(e){} }
+function saveProfiles(){ try{ localStorage.setItem("detectiveSudokuProfiles", JSON.stringify(profiles)); }catch(e){} }
+function save(){
+  if(currentProfile){
+    profiles[currentProfile]=profiles[currentProfile]||{};
+    profiles[currentProfile].state=state;
+    saveProfiles();
+  }
+  try{ localStorage.setItem("detectiveSudoku", JSON.stringify(state)); }catch(e){} // 구 버전 호환 유지
+}
+function escapeHTML(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+function uniqueName(nm){
+  if(!profiles[nm]) return nm;
+  let i=2;
+  while(profiles[nm+" ("+i+")"]) i++;
+  return nm+" ("+i+")"; // 같은 이름의 탐정이 있으면 (2), (3)... 자동으로 붙임
+}
+function applyProfile(name){
+  currentProfile=name;
+  const p=profiles[name]||{};
+  state=Object.assign(FRESH_STATE(), p.state||{});
+  state.name=name;
+  trainState=Object.assign(FRESH_TRAIN(), p.train||{});
+  try{ localStorage.setItem("detectiveSudokuCurrent", name); }catch(e){}
+}
+function migrateLegacy(){
+  // 기존 단일 키 데이터가 있고 프로필이 하나도 없으면 첫 프로필로 자동 이사 (기존 키는 삭제하지 않음)
+  if(Object.keys(profiles).length>0) return;
+  let legacy=null; try{ const s=localStorage.getItem("detectiveSudoku"); if(s) legacy=JSON.parse(s); }catch(e){}
+  if(!legacy||typeof legacy!=="object") return;
+  let legacyTrain=null; try{ const s=localStorage.getItem("detectiveSudokuTrain"); if(s) legacyTrain=JSON.parse(s); }catch(e){}
+  const nm=uniqueName(String(legacy.name||"").trim()||"꼬마");
+  profiles[nm]={
+    state:Object.assign(FRESH_STATE(), legacy, {name:nm}),
+    train:(legacyTrain&&Array.isArray(legacyTrain.cleared))?legacyTrain:FRESH_TRAIN()
+  };
+  saveProfiles();
+}
+function resumeFor(st){
+  renderTop();
+  if(st.finished) ending();
+  else missionIntro(); // 새 프로필(mission 0)은 1장 소개부터
+}
+let pendingDelete=null; // 삭제 2단계 확인용 (지금 확인 중인 프로필 이름)
+function profileScreen(){
+  renderTop();
+  const names=Object.keys(profiles);
+  let html=`<h1 class="center">🔎 사라진 숫자 보석 사건</h1>
+    <p class="center jua" style="font-size:1.2rem; margin:8px 0">누가 탐정 놀이를 할까?</p>`;
+  if(names.length===0){
+    html+=`<div class="clue-card center">아직 탐정이 없어!<br>아래 버튼을 눌러 새 탐정을 만들어 보자!</div>`;
+  } else {
+    html+=names.map(nm=>{
+      const p=profiles[nm]||{}, st=p.state||{}, tr=p.train||{};
+      const b=badgeFor(st.mission>=10?10:(st.mission||0));
+      const stars=Object.keys(tr.stars||{}).reduce((a,k)=>a+(tr.stars[k]||0),0);
+      const missionTxt=st.finished?"사건 해결! 🎉":(st.mission>0?`미션 ${st.mission}/10 진행 중`:"이제 막 시작!");
+      const delBtn = pendingDelete===nm
+        ? `<button data-del="${escapeHTML(nm)}" style="background:#ffdada;border-color:#d33">정말 지울까?<br>한 번 더 눌러!</button>`
+        : `<button data-del="${escapeHTML(nm)}" aria-label="${escapeHTML(nm)} 탐정 삭제" title="삭제">🗑️</button>`;
+      return `<div class="clue-card">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+          <span style="font-size:2.2rem" aria-hidden="true">${b[1].split(" ")[0]}</span>
+          <div style="flex:1; min-width:130px"><b class="jua" style="font-size:1.25rem">${escapeHTML(nm)} 탐정</b><br>
+          <span style="font-size:.95rem">${b[1].split(" ")[1]} · ${missionTxt} · 훈련 ⭐${stars}개</span></div>
+          ${delBtn}
+        </div>
+        <button class="big-btn" data-cont="${escapeHTML(nm)}" style="width:100%; margin-top:8px">▶ 이어하기</button>
+      </div>`;
+    }).join("");
+  }
+  html+=`<div class="center" style="margin-top:14px"><button class="big-btn" id="new-btn" style="background:#4caf6d; border-color:#2e7d43">➕ 새 탐정 시작</button></div>`;
+  screen.innerHTML=html;
+  document.getElementById("new-btn").onclick=startScreen;
+  screen.querySelectorAll("[data-cont]").forEach(b=>b.onclick=()=>{
+    pendingDelete=null;
+    applyProfile(b.dataset.cont); resumeFor(state);
+  });
+  screen.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    const nm=b.dataset.del;
+    if(pendingDelete===nm){ // 2단계: 두 번째 클릭에서 진짜 삭제
+      delete profiles[nm]; saveProfiles();
+      if(currentProfile===nm){ currentProfile=""; try{ localStorage.removeItem("detectiveSudokuCurrent"); }catch(e){} }
+      pendingDelete=null;
+    } else pendingDelete=nm; // 1단계: 확인 문구로 변경
+    profileScreen();
+  });
+}
+function switchDetective(){
+  save(); saveTrain(); // 현재 진행 저장 후 목록으로
+  pendingDelete=null;
+  profileScreen();
+}
+function badgeFor(m){ let b=BADGES[0]; for(const x of BADGES) if(m>=x[0]) b=x; return b; }
+
+/* ================= 공통 UI ================= */
+const screen = document.getElementById("screen");
+function renderTop(){
+  document.getElementById("det-name").textContent = state.name ? state.name+" 탐정" : "탐정";
+  const b = badgeFor(state.mission>=10?10:state.mission);
+  document.getElementById("badge").textContent = b[1];
+  document.querySelectorAll(".gold-slot").forEach((el,i)=>{
+    el.textContent = state.gold[i] ?? "?";
+    el.classList.toggle("filled", state.gold[i]!=null);
+  });
+  const p = document.getElementById("progress");
+  p.innerHTML="";
+  for(let i=0;i<10;i++){ const d=document.createElement("div"); d.className="seg"+(i<state.mission?" done":""); p.appendChild(d); }
+}
+function chiefSays(t){ return `<div class="chief-speech">${CHIEF_SVG}<div class="bubble"><b>대장 탐정:</b> ${t}</div></div>`; }
+function raccoonSays(t){ return `<div class="raccoon-speech">${RACCOON_SVG}<div class="bubble"><b>뒤죽박죽 너구리:</b> ${t}</div></div>`; }
+function toolbarHTML(){ return `<div class="toolbar">
+  <button id="hint-btn" aria-label="돋보기 힌트">🔍</button>
+  <button id="notebook-btn">📓 탐정 수첩</button></div>`; }
+function bindToolbar(m){
+  document.getElementById("hint-btn").onclick=()=>showFeedback("hint","🔍 "+m.hint);
+  document.getElementById("notebook-btn").onclick=openNotebook;
+}
+function showFeedback(kind,msg){
+  if(cleared && kind!=="ok") return;
+  const f=document.getElementById("feedback");
+  if(!f) return;
+  f.className="feedback "+kind; f.textContent=msg; f.focus?.();
+}
+function buildBoard(grid, opts={}){
+  const b=document.createElement("div"); b.id="board";
+  grid.forEach((row,r)=>row.forEach((v,c)=>{
+    const d=document.createElement("div");
+    d.className="cell"; d.dataset.r=r; d.dataset.c=c; d.tabIndex=0;
+    d.setAttribute("role","button"); d.setAttribute("aria-label",(r+1)+"번째 줄 "+(c+1)+"번째 칸");
+    if(v) d.textContent=v; else d.classList.add("blank");
+    if(opts.marks){ const mk=opts.marks.find(m=>m[0]===r&&m[1]===c);
+      if(mk){ d.classList.add("mark"); d.innerHTML=`<div><div style="font-size:.8rem">${mk[2]}</div><div>${v||""}</div></div>`; } }
+    b.appendChild(d);
+  }));
+  return b;
+}
+</script>
+<script>
+"use strict";
+/* ================= 화면들 ================= */
+function startScreen(){
+  screen.innerHTML = `
+    <h1 class="center">🔎 사라진 숫자 보석 사건</h1>
+    <div class="cert" style="text-align:left">
+      <p class="jua" style="font-size:1.2rem">📜 사건 의뢰서</p><br>
+      <p>꼬마 탐정에게!</p><br>
+      <p>보석 상자에 있던 <b>숫자 보석</b>들이 사라졌어!
+      범인은 숫자를 몰래 바꾸는 <b>뒤죽박죽 너구리</b>야.</p><br>
+      <p>스도쿠 판에 숨겨진 숫자를 찾아서 너구리를 잡아 줘!
+      황금 단서 4장을 모으면 <b>비밀번호</b>를 알 수 있어.</p><br>
+      <p style="text-align:right">- 대장 탐정 🕵️</p>
+    </div>
+    <label for="name-input" class="jua">탐정 이름을 적어 줘!</label>
+    <input type="text" id="name-input" maxlength="10" placeholder="예: 하은">
+    <div class="center" style="margin-top:12px">
+      <button class="big-btn" id="start-btn">사건 시작!</button>
+    </div>`;
+  const inp=document.getElementById("name-input");
+  document.getElementById("start-btn").onclick=()=>{
+    // 같은 이름의 탐정이 있으면 "(2)"를 붙여 새 프로필 생성
+    const nm=uniqueName(inp.value.trim()||"꼬마");
+    state=Object.assign(FRESH_STATE(),{name:nm});
+    trainState=FRESH_TRAIN();
+    currentProfile=nm;
+    profiles[nm]={state:state, train:trainState};
+    saveProfiles();
+    try{ localStorage.setItem("detectiveSudokuCurrent", nm); }catch(e){}
+    save(); saveTrain();
+    missionIntro();
+  };
+  inp.focus();
+  // 탐정 목록으로 돌아가기
+  const backWrap=document.createElement("div");
+  backWrap.className="center"; backWrap.style.marginTop="10px";
+  backWrap.innerHTML=`<button id="back-list-btn" style="background:#e5e0d4; border-color:#b0a890">← 탐정 목록으로</button>`;
+  screen.appendChild(backWrap);
+  document.getElementById("back-list-btn").onclick=profileScreen;
+}
+
+function missionIntro(){
+  renderTop();
+  const m = MISSIONS[state.mission];
+  screen.innerHTML = `
+    <h2 class="center">${m.ch} - ${m.concept}</h2>
+    ${chiefSays(m.chief.replace(/탐정/g,"")+" "+state.name+" 탐정!")}
+    <div class="center"><button class="big-btn" id="go-btn">미션 시작!</button></div>
+    <div class="toolbar"><button id="notebook-btn">📓 탐정 수첩</button></div>`;
+  document.getElementById("go-btn").onclick=()=>runMission(m);
+  document.getElementById("notebook-btn").onclick=openNotebook;
+}
+
+let cleared=false; // 정답 후 연타해도 미션이 두 번 넘어가지 않게
+function runMission(m){
+  cleared=false;
+  renderTop();
+  if(m.type==="quiz") return quizMission(m);
+  if(m.type==="fill") return fillMission(m);
+  if(m.type==="findwrong") return findWrongMission(m);
+  if(m.type==="code") return codeMission(m);
+}
+
+function quizMission(m){
+  screen.innerHTML = `<h2 class="center">${m.ch} O/X 퀴즈</h2>${chiefSays(m.chief)}
+    <div class="bubble" style="font-size:1.15rem; margin:12px 0">❓ ${m.q}</div>
+    <button class="choice" data-i="0">🙆 ${m.choices[0]}</button>
+    <button class="choice" data-i="1">🙅 ${m.choices[1]}</button>
+    <div id="feedback" class="feedback" tabindex="-1"></div>
+    <div class="center" id="next-slot"></div>${toolbarHTML()}`;
+  bindToolbar(m);
+  document.querySelectorAll(".choice").forEach(btn=>btn.onclick=()=>{
+    if(+btn.dataset.i===m.answer){ showFeedback("ok","🎉 "+m.ok); missionClear(m); }
+    else showFeedback("no","🤔 "+m.no);
+  });
+}
+
+function fillMission(m){
+  // 보드 데이터를 4x4로 확장
+  let grid;
+  if(m.singleRow){ grid=[[...m.board[0]],[null,null,null,null],[null,null,null,null],[null,null,null,null]]; }
+  else if(m.singleCol){ grid=m.board.map(r=>[r[0],null,null,null]); }
+  else if(m.box2){ grid=[m.board[0].concat([null,null]), m.board[1].concat([null,null]), [null,null,null,null],[null,null,null,null]]; }
+  else { grid=m.board.map(r=>r.slice()); }
+  const solved={};
+  screen.innerHTML = `<h2 class="center">${m.ch} ${m.concept}</h2>${chiefSays(m.chief)}
+    <p class="center jua">빈칸을 누르고 숫자를 골라 봐!</p>
+    <div id="board-slot"></div>
+    <div id="numpad">${[1,2,3,4].map(n=>`<button data-n="${n}">${n}</button>`).join("")}</div>
+    <div id="feedback" class="feedback" tabindex="-1"></div>
+    <div class="center" id="next-slot"></div>${toolbarHTML()}`;
+  bindToolbar(m);
+  const opts={};
+  if(m.goldenCell){ opts.marks=[[m.goldenCell[0],m.goldenCell[1],"★"]]; }
+  const board=buildBoard(grid.map(r=>r.map(v=>v??0)),opts);
+  // null 칸은 표시 안 함
+  board.querySelectorAll(".cell").forEach(c=>{
+    const r=+c.dataset.r, cc=+c.dataset.c;
+    if(grid[r][cc]===null){ c.style.visibility="hidden"; c.tabIndex=-1; }
+    if(!m.targets.some(t=>t[0]===r&&t[1]===cc)){ c.style.cursor="default"; }
+  });
+  document.getElementById("board-slot").appendChild(board);
+  let sel=null;
+  board.querySelectorAll(".cell").forEach(c=>{
+    const act=()=>{
+      const r=+c.dataset.r, cc=+c.dataset.c;
+      if(!m.targets.some(t=>t[0]===r&&t[1]===cc)) return;
+      board.querySelectorAll(".cell").forEach(x=>x.classList.remove("selected"));
+      c.classList.add("selected"); sel=[r,cc];
+    };
+    c.onclick=act; c.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();act();} };
+  });
+  document.querySelectorAll("#numpad button").forEach(btn=>btn.onclick=()=>{
+    if(!sel){ showFeedback("hint","먼저 빈칸을 눌러 줘!"); return; }
+    const [r,cc]=sel, n=+btn.dataset.n;
+    const answer=m.solution ? m.solution[r][cc] : expectedByRule(grid,r,cc,m);
+    if(n===answer){
+      const cell=board.querySelector(`[data-r="${r}"][data-c="${cc}"]`);
+      cell.textContent=n; cell.classList.remove("selected","blank"); cell.classList.add("correct");
+      solved[r+","+cc]=true;
+      const left=m.targets.filter(t=>!solved[t[0]+","+t[1]]);
+      if(left.length===0){ showFeedback("ok","🎉 "+m.ok); missionClear(m); }
+      else showFeedback("ok","👍 맞았어! 남은 빈칸 "+left.length+"개!");
+    } else showFeedback("no","🤔 "+m.no);
+  });
+}
+function expectedByRule(grid,r,c,m){
+  const nums=new Set();
+  if(m.singleRow){ grid[r].forEach(v=>{if(v)nums.add(v);}); }
+  else if(m.singleCol){ grid.forEach(row=>{if(row[c])nums.add(row[c]);}); }
+  else if(m.box2){
+    const br=Math.floor(r/2)*2, bc=Math.floor(c/2)*2;
+    for(let i=br;i<br+2;i++)for(let j=bc;j<bc+2;j++){ if(grid[i]&&grid[i][j]) nums.add(grid[i][j]); }
+  }
+  for(let n=1;n<=4;n++) if(!nums.has(n)) return n;
+  return null;
+}
+
+function findWrongMission(m){
+  screen.innerHTML = `<h2 class="center">${m.ch} 틀린 칸 찾기</h2>${chiefSays(m.chief)}
+    ${raccoonSays("히히~ 내가 숫자 하나를 바꿨지롱! 찾을 수 있겠어?")}
+    <p class="center jua">너구리가 바꾼 칸을 눌러 봐!</p>
+    <div id="board-slot"></div>
+    <div id="feedback" class="feedback" tabindex="-1"></div>
+    <div class="center" id="next-slot"></div>${toolbarHTML()}`;
+  bindToolbar(m);
+  const board=buildBoard(m.board);
+  document.getElementById("board-slot").appendChild(board);
+  board.querySelectorAll(".cell").forEach(c=>{
+    const act=()=>{
+      const r=+c.dataset.r, cc=+c.dataset.c;
+      if(m.wrongCells.some(w=>w[0]===r&&w[1]===cc)){
+        if(cleared) return;
+        c.classList.add("wrong");
+        setTimeout(()=>{ c.textContent=m.fixTo; c.classList.remove("wrong"); c.classList.add("correct","pop"); },900);
+        showFeedback("ok","🎉 "+m.ok); missionClear(m);
+      } else if(!cleared) { c.classList.add("correct"); setTimeout(()=>c.classList.remove("correct"),600); showFeedback("no","🤔 "+m.no); }
+    };
+    c.onclick=act; c.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();act();} };
+  });
+}
+
+function codeMission(m){
+  screen.innerHTML = `<h2 class="center">${m.ch} 암호 쪽지</h2>${chiefSays(m.chief)}
+    ${raccoonSays("이 쪽지를 읽을 수 있을까~? ♥와 ★를 순서대로 읽어 봐!")}
+    <div id="board-slot"></div>
+    <div class="bubble" style="margin:10px 0">${m.q}</div>
+    <div id="numpad">${[1,2,3,4].map(n=>`<button data-n="${n}">${n}</button>`).join("")}</div>
+    <p class="center jua" id="code-display" style="font-size:2rem; letter-spacing:8px">__</p>
+    <div id="feedback" class="feedback" tabindex="-1"></div>
+    <div class="center" id="next-slot"></div>${toolbarHTML()}`;
+  bindToolbar(m);
+  const board=buildBoard(m.board,{marks:m.marks});
+  document.getElementById("board-slot").appendChild(board);
+  let typed="";
+  document.querySelectorAll("#numpad button").forEach(btn=>btn.onclick=()=>{
+    if(typed.length>=2) return;
+    typed+=btn.dataset.n;
+    document.getElementById("code-display").textContent=typed.padEnd(2,"_");
+    if(typed.length===2){
+      if(typed===m.answer){ showFeedback("ok","🎉 "+m.ok); missionClear(m); }
+      else { showFeedback("no","🤔 "+m.no); typed=""; setTimeout(()=>document.getElementById("code-display").textContent="__",800); }
+    }
+  });
+}
+
+function missionClear(m){
+  if(cleared) return; cleared=true;
+  const num=state.mission+1;
+  if(m.golden!=null && state.gold[m.golden]==null){
+    state.gold[m.golden]=GOLDEN[m.golden];
+    state.clues.push(`황금 단서 ${m.golden+1}번: 숫자 ${GOLDEN[m.golden]} (${m.ch})`);
+  } else {
+    state.clues.push(`${m.ch} 단서 카드: ${m.concept} - ${m.ok.split("!")[0]}!`);
+  }
+  state.mission=num; save();
+  const slot=document.getElementById("next-slot");
+  slot.innerHTML=`<div class="clue-card pop ${m.golden!=null?"golden":""}">
+    🃏 <b>${m.golden!=null?"황금 단서 카드 "+(m.golden+1)+"번: 숫자 "+GOLDEN[m.golden]:"단서 카드 획득!"}</b></div>
+    <span class="stamp">해결!</span><br><br>
+    <button class="big-btn" id="next-btn">${num>=10?"범인을 잡으러 가자!":"다음 미션!"}</button>`;
+  document.getElementById("next-btn").onclick=()=>{
+    if(num===3||num===7) badgeUp(num);
+    else if(num>=10) ending();
+    else missionIntro();
+  };
+  renderTop();
+}
+
+function badgeUp(missionNum){
+  renderTop();
+  const b=badgeFor(missionNum);
+  screen.innerHTML=`<div class="center">
+    <h2>🎊 배지 승급! 🎊</h2>
+    <div class="pop" style="font-size:5rem; margin:20px">${b[1].split(" ")[0]}</div>
+    <p class="jua" style="font-size:1.5rem">${state.name} 탐정은 이제<br>「${b[1].split(" ")[1]}」!</p>
+    ${chiefSays("축하해 "+state.name+" 탐정! 정말 대단해!")}
+    <button class="big-btn" id="cont-btn">계속하기</button></div>`;
+  document.getElementById("cont-btn").onclick=missionIntro;
+}
+
+function ending(){
+  renderTop(); state.finished=true; save();
+  const today=new Date();
+  const dateStr=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`;
+  screen.innerHTML=`
+    <h2 class="center">🚨 범인 체포! 🚨</h2>
+    ${raccoonSays("들켰다! 미안해… 숫자 보석은 여기 있어. 장난이 너무 심했지? 앞으로는 착한 너구리가 될게! 우리 친구하자!")}
+    ${chiefSays(state.name+" 탐정, 정말 훌륭했어! 숫자 보석을 모두 찾았어!")}
+    <div class="center"><span class="stamp">사건 해결!</span></div>
+    <div class="cert pop">
+      <p class="jua" style="font-size:1.5rem">👑 명탐정 임명장 👑</p><br>
+      <p><b>${state.name} 탐정</b>은</p>
+      <p>사라진 숫자 보석 사건을 해결하여</p>
+      <p><b>명탐정</b>으로 임명합니다!</p><br>
+      <p>${dateStr}</p>
+      <p>탐정 사무소 대장 탐정 🕵️ <span class="stamp" style="font-size:.9rem">인</span></p>
+    </div>
+    <div class="clue-card golden pop center">
+      <p class="jua">🔐 다음 방 비밀번호 🔐</p>
+      <p id="password-show">${PASSWORD}</p>
+      <p class="jua">이 비밀번호를 탐정 수첩에 적어 두세요.<br>다음 방 자물쇠를 열 수 있어요!</p>
+    </div>
+    <div class="center">
+      <button class="big-btn" id="train-btn" style="background:#d36b2b; border-color:#96491a;">🔥 더 어려운 사건 도전하기</button><br><br>
+      <button class="big-btn" id="restart-btn">처음부터 다시 하기</button>
+    </div>`;
+  document.getElementById("train-btn").onclick=trainMap;
+  document.getElementById("restart-btn").onclick=()=>{
+    // 현재 프로필만 초기화 (다른 탐정의 진행은 그대로)
+    state=Object.assign(FRESH_STATE(),{name:state.name});
+    save(); missionIntro(); renderTop();
+  };
+}
+
+function openNotebook(){
+  const clueList = state.clues.length? state.clues.map(c=>`<div class="clue-card">🃏 ${c}</div>`).join("") : "<p>아직 모은 단서가 없어.</p>";
+  screen.innerHTML=`<h2 class="center">📓 ${state.name} 탐정의 수첩</h2>
+    <div class="clue-card"><b>📏 배운 규칙</b><br>
+    1. 같은 가로줄에 같은 숫자는 한 번만!<br>
+    2. 같은 세로줄에 같은 숫자는 한 번만!<br>
+    3. 네 칸짜리 네모 구역에도 1~4가 한 번씩!</div>
+    <div class="clue-card golden"><b>🔐 황금 단서</b> : ${state.gold.map(g=>g??"?").join(" - ")}</div>
+    <h3>🏋️ 훈련 모드 기록</h3>
+    <div class="clue-card">${[1,2,3,4,5,6,7,8,9].map(l=>{
+      const s=trainState.stars[l];
+      return `레벨 ${l}: ${s? "★".repeat(s)+"☆".repeat(3-s) : (trainState.cleared.includes(l)?"✅":"🔒")}`;
+    }).join("<br>")}${trainState.legendBadge?'<br><b>👑 전설의 탐정 배지 획득!</b>':""}</div>
+    <h3>🃏 모은 단서 카드</h3>${clueList}
+    <div class="center">
+      <button class="big-btn" id="back-btn">수첩 닫기</button><br><br>
+      <button class="big-btn" id="switch-btn2" style="background:#dff0ff; border-color:#2b7cd3">🔄 탐정 바꾸기</button>
+    </div>`;
+  document.getElementById("switch-btn2").onclick=switchDetective;
+  document.getElementById("back-btn").onclick=()=>{
+    if(notebookReturn==="map"){ notebookReturn=null; trainMap(); }
+    else if(state.finished) ending();
+    else if(!state.name) profileScreen();
+    else missionIntro();
+  };
+}
+
+/* 부모님 안내 */
+document.getElementById("parent-content").innerHTML=`
+  <p><b>🔐 비밀번호: ${PASSWORD}</b> (황금 단서 3-1-4-2 순서)</p>
+  <p>방탈출 연결: 다음 방 자물쇠에 4자리 숫자 <b>${PASSWORD}</b>를 입력하도록 설정하세요.</p>
+  <table><tr><th>미션</th><th>정답</th></tr>
+  <tr><td>1</td><td>안 돼! 한 번만!</td></tr>
+  <tr><td>2</td><td>3</td></tr><tr><td>3</td><td>2</td></tr><tr><td>4</td><td>1</td></tr>
+  <tr><td>5</td><td>세 번째 줄 두 번째 칸 (2 → 원래 1)</td></tr>
+  <tr><td>6</td><td>★ 칸 4, 옆 칸 1</td></tr>
+  <tr><td>7</td><td>(1,3)=3, (2,1)=3, (4,3)=2</td></tr>
+  <tr><td>8</td><td>42</td></tr>
+  <tr><td>9</td><td>2,3,4,3,3 (풀이: 2143/3412/1234/4321)</td></tr>
+  <tr><td>10</td><td>1342/4213/2431/3124</td></tr></table>
+  <br><button id="reset-btn">🔄 다시 하기 (진행 초기화)</button>`;
+document.getElementById("reset-btn").onclick=()=>{
+  // 현재 프로필만 초기화 (다른 탐정의 진행과 기존 저장 키는 그대로)
+  state=Object.assign(FRESH_STATE(),{name:currentProfile||state.name});
+  save(); renderTop();
+  if(currentProfile) missionIntro(); else profileScreen();
+};
+/* 🔄 상단 바 "탐정 바꾸기" 버튼 */
+document.getElementById("switch-btn").onclick=switchDetective;
+
+/* 시작: 프로필 불러오기 → 기존 키 마이그레이션 → 이어하기 또는 목록 */
+function boot(){
+  loadProfiles();
+  migrateLegacy(); // 기존 detectiveSudoku / detectiveSudokuTrain 데이터가 있으면 첫 프로필로 이사 (기존 키는 유지)
+  try{ currentProfile=localStorage.getItem("detectiveSudokuCurrent")||""; }catch(e){}
+  renderTop();
+  if(currentProfile && profiles[currentProfile]){
+    applyProfile(currentProfile);
+    resumeFor(state);
+  } else {
+    currentProfile="";
+    profileScreen();
+  }
+}
+</script>
+<script>
+"use strict";
+/* ================= 탐정 훈련 모드 ================= */
+/* 레벨 정의: [판 크기, 네모방 가로, 네모방 세로, 빈칸 수] */
+const LEVELS=[
+  {n:4,bw:2,bh:2,blanks:6},{n:4,bw:2,bh:2,blanks:8},{n:4,bw:2,bh:2,blanks:10},
+  {n:6,bw:3,bh:2,blanks:10},{n:6,bw:3,bh:2,blanks:14},{n:6,bw:3,bh:2,blanks:18},
+  {n:9,bw:3,bh:3,blanks:25},{n:9,bw:3,bh:3,blanks:35},{n:9,bw:3,bh:3,blanks:45}
+];
+const ZONES=[[1,3,"🏘️ 동네 사건"],[4,6,"🏙️ 도시 사건"],[7,9,"🌏 나라 사건"]];
+let trainState={cleared:[],stars:{},legendBadge:false};
+function saveTrain(){
+  if(currentProfile){ // 프로필 맵에 훈련 진행도 함께 저장
+    profiles[currentProfile]=profiles[currentProfile]||{};
+    profiles[currentProfile].train=trainState;
+    profiles[currentProfile].state=state;
+    saveProfiles();
+  }
+  try{ localStorage.setItem("detectiveSudokuTrain",JSON.stringify(trainState)); }catch(e){} // 구 버전 호환 유지
+}
+function loadTrain(){ try{ const s=localStorage.getItem("detectiveSudokuTrain");
+  if(s){ const t=JSON.parse(s); if(t&&Array.isArray(t.cleared)) trainState=Object.assign(trainState,t); } }catch(e){} }
+let notebookReturn=null;
+
+/* ---- 문제 자동 생성 ---- */
+function shuffled(a){ const x=a.slice(); for(let i=x.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [x[i],x[j]]=[x[j],x[i]]; } return x; }
+function okPlace(g,n,bw,bh,r,c,v){
+  for(let i=0;i<n;i++){ if(g[r][i]===v||g[i][c]===v) return false; }
+  const br=Math.floor(r/bh)*bh, bc=Math.floor(c/bw)*bw;
+  for(let i=br;i<br+bh;i++) for(let j=bc;j<bc+bw;j++){ if(g[i][j]===v) return false; }
+  return true;
+}
+function genSolution(n,bw,bh){
+  const g=Array.from({length:n},()=>Array(n).fill(0));
+  (function fill(pos){
+    if(pos===n*n) return true;
+    const r=Math.floor(pos/n), c=pos%n;
+    for(const v of shuffled([...Array(n).keys()].map(i=>i+1))){
+      if(okPlace(g,n,bw,bh,r,c,v)){ g[r][c]=v; if(fill(pos+1)) return true; g[r][c]=0; }
+    }
+    return false;
+  })(0);
+  return g;
+}
+/* 해 개수를 최대 limit개까지 세는 백트래킹 카운터 */
+function countSolutions(g,n,bw,bh,limit){
+  let count=0;
+  (function solve(){
+    if(count>=limit) return;
+    let br=-1,bc=-1,best=null;
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++) if(!g[r][c]){
+      const cand=[];
+      for(let v=1;v<=n;v++) if(okPlace(g,n,bw,bh,r,c,v)) cand.push(v);
+      if(cand.length===0) return;
+      if(!best||cand.length<best.length){ best=cand; br=r; bc=c; }
+    }
+    if(best===null){ count++; return; }
+    for(const v of best){ g[br][bc]=v; solve(); g[br][bc]=0; if(count>=limit) return; }
+  })();
+  return count;
+}
+function genPuzzle(n,bw,bh,blanks){
+  const solution=genSolution(n,bw,bh);
+  const puzzle=solution.map(r=>r.slice());
+  let removed=0, guard=0;
+  const cells=shuffled([...Array(n*n).keys()]);
+  for(const pos of cells){
+    if(removed>=blanks||guard>=n*n*4) break;
+    guard++;
+    const r=Math.floor(pos/n), c=pos%n;
+    if(!puzzle[r][c]) continue;
+    const bak=puzzle[r][c]; puzzle[r][c]=0;
+    if(countSolutions(puzzle,n,bw,bh,2)!==1) puzzle[r][c]=bak; // 유일해 유지
+    else removed++;
+  }
+  return {puzzle,solution};
+}
+
+/* ---- 레벨 지도 ---- */
+function trainMap(){
+  renderTop();
+  let html=`<h2 class="center">🔥 탐정 훈련 모드</h2>
+    ${chiefSays(state.name+" 탐정! 새로운 사건들이 기다리고 있어! 차례대로 해결해 보자!")}`;
+  ZONES.forEach(([a,b,title])=>{
+    html+=`<div class="map-zone"><h3 class="jua">${title}</h3>`;
+    const nums=[]; for(let l=a;l<=b;l++) nums.push(l);
+    html+=`<div class="lv-row${a===4?" rev":""}">`+nums.map(l=>{
+      const done=trainState.cleared.includes(l), open=l===1||trainState.cleared.includes(l-1);
+      const st=trainState.stars[l];
+      const cls=done?"done":(open?"open":"locked");
+      const inner=(done?`<span class="stampmini">✅</span>`:"")+
+        `<span style="font-size:1.3rem">${done?"📂":open?"🔎":"🔒"}</span>레벨 ${l}`+
+        `<span class="stars">${st?"★".repeat(st):"&nbsp;"}</span>`;
+      return done||open
+        ? `<button class="lv-card ${cls}" data-lv="${l}" style="min-height:88px">${inner}</button>`
+        : `<div class="lv-card ${cls}" role="img" aria-label="레벨 ${l} 잠김">${inner}</div>`;
+    }).join("")+`</div></div>`;
+  });
+  if(trainState.legendBadge) html+=`<div class="clue-card golden center pop"><b>👑 전설의 탐정!</b> 모든 사건을 해결했어!</div>`;
+  html+=`<div class="toolbar">
+    <button id="notebook-btn">📓 탐정 수첩</button>
+    <button id="end-btn">🏠 사건 화면으로</button></div>`;
+  screen.innerHTML=html;
+  screen.querySelectorAll("button.lv-card").forEach(b=>b.onclick=()=>trainIntro(+b.dataset.lv));
+  document.getElementById("notebook-btn").onclick=()=>{ notebookReturn="map"; openNotebook(); };
+  document.getElementById("end-btn").onclick=()=>{ state.finished?ending():(state.name?missionIntro():profileScreen()); };
+}
+
+function trainIntro(lv){
+  renderTop();
+  const L=LEVELS[lv-1];
+  let msg;
+  if(lv===4) msg="이번엔 판이 더 커졌어! 네모방이 가로로 긴 직사각형(가로 3칸, 세로 2칸)이 됐어! 숫자는 1부터 6까지야!";
+  else if(lv===7) msg="판이 아주 커졌어! 숫자가 1부터 9까지 늘었어! 네모방은 가로 3칸, 세로 3칸이야!";
+  else msg=`레벨 ${lv} 사건이야! ${L.n}×${L.n} 판에서 빈칸 ${L.blanks}개를 채워 줘! 숫자는 1부터 ${L.n}까지야!`;
+  screen.innerHTML=`<h2 class="center">레벨 ${lv} ${lv<=3?"🏘️":lv<=6?"🏙️":"🌏"}</h2>
+    ${chiefSays(msg)}
+    <div class="center"><button class="big-btn" id="tgo-btn">사건 시작!</button></div>
+    <div class="toolbar"><button id="tmap-btn">🗺️ 지도로</button></div>`;
+  document.getElementById("tgo-btn").onclick=()=>trainLoading(lv);
+  document.getElementById("tmap-btn").onclick=trainMap;
+}
+
+function trainLoading(lv){
+  screen.innerHTML=`<div class="loading-box"><span class="mag">🕵️</span>
+    <p class="jua" style="font-size:1.2rem; margin-top:12px">사건 파일을 준비하는 중…</p></div>`;
+  setTimeout(()=>trainPlay(lv),50); // 로딩 화면을 먼저 렌더링하고 생성 실행
+}
+
+/* ---- 훈련 플레이 ---- */
+let tCleared=false; // 정답 연타 방지 잠금 (기존 cleared 패턴과 동일)
+function trainPlay(lv){
+  tCleared=false;
+  renderTop();
+  const L=LEVELS[lv-1], n=L.n, bw=L.bw, bh=L.bh;
+  const {puzzle,solution}=genPuzzle(n,bw,bh,L.blanks);
+  const given=puzzle.map(r=>r.slice());
+  let sel=null, hintStage=0, hintsUsed=0, hintCell=null, wrongLock=false;
+
+  screen.innerHTML=`<h2 class="center">레벨 ${lv} 사건 현장 ${lv<=3?"🏘️":lv<=6?"🏙️":"🌏"}</h2>
+    <p class="center jua">빈칸을 누르고 숫자를 골라 봐!</p>
+    <div id="board-slot"></div>
+    <div id="numpad" class="wrap">${[...Array(n).keys()].map(i=>`<button data-n="${i+1}">${i+1}</button>`).join("")}
+      <button data-n="0" aria-label="지우기">⌫</button></div>
+    <div id="feedback" class="feedback" tabindex="-1"></div>
+    <div class="center" id="next-slot"></div>
+    <div class="toolbar">
+      <button id="hint-btn" aria-label="돋보기 힌트">🔍</button>
+      <button id="tmap-btn2">🗺️ 지도로</button></div>`;
+
+  const board=buildBoard(puzzle);
+  board.classList.add("n"+n);
+  // 네모방 경계선 두껍게 (판 크기 일반화)
+  board.querySelectorAll(".cell").forEach(c=>{
+    const r=+c.dataset.r, cc=+c.dataset.c;
+    if(puzzle[r][cc]) c.classList.add("given");
+    c.style.borderLeftWidth=(cc%bw===0)?"4px":"2px";
+    c.style.borderTopWidth=(r%bh===0)?"4px":"2px";
+    c.style.borderRightWidth=(cc===n-1)?"4px":"2px";
+    c.style.borderBottomWidth=(r===n-1)?"4px":"2px";
+  });
+  document.getElementById("board-slot").appendChild(board);
+  const cellAt=(r,c)=>board.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+  const sameBox=(r1,c1,r2,c2)=>Math.floor(r1/bh)===Math.floor(r2/bh)&&Math.floor(c1/bw)===Math.floor(c2/bw);
+  function refreshMarks(){
+    board.querySelectorAll(".cell").forEach(c=>c.classList.remove("related","same-num"));
+    if(!sel) return;
+    const [r,cc]=sel;
+    board.querySelectorAll(".cell").forEach(x=>{
+      const rr=+x.dataset.r, cx=+x.dataset.c;
+      if(rr===r||cx===cc||sameBox(rr,cx,r,cc)) x.classList.add("related");
+    });
+  }
+  board.querySelectorAll(".cell").forEach(c=>{
+    const act=()=>{
+      if(tCleared) return;
+      const r=+c.dataset.r, cc=+c.dataset.c;
+      board.querySelectorAll(".cell").forEach(x=>x.classList.remove("selected"));
+      c.classList.add("selected"); sel=[r,cc]; refreshMarks();
+    };
+    c.onclick=act; c.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();act();} };
+  });
+  function conflictWhy(r,c,v){
+    for(let i=0;i<n;i++) if(i!==c&&given[r][i]===v) return `이 가로줄에 벌써 ${v}이(가) 숨어 있어!`;
+    for(let i=0;i<n;i++) if(i!==r&&given[i][c]===v) return `이 세로줄에 벌써 ${v}이(가) 숨어 있어!`;
+    const br=Math.floor(r/bh)*bh, bc=Math.floor(c/bw)*bw;
+    for(let i=br;i<br+bh;i++)for(let j=bc;j<bc+bw;j++)
+      if((i!==r||j!==c)&&given[i][j]===v) return `이 네모방에 벌써 ${v}이(가) 숨어 있어!`;
+    return "이 칸엔 그 숫자가 들어갈 수 없어! 가로줄, 세로줄, 네모방을 다시 봐 봐!";
+  }
+  function checkDone(){
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++) if(given[r][c]!==solution[r][c]) return false;
+    return true;
+  }
+  function inputNum(v){
+    if(tCleared) return;
+    if(!sel){ showFeedback("hint","먼저 빈칸을 눌러 줘!"); return; }
+    const [r,c]=sel, cell=cellAt(r,c);
+    if(cell.classList.contains("given")){ showFeedback("hint","그 칸은 처음부터 있던 단서야! 다른 빈칸을 골라 봐!"); return; }
+    if(v===0){ // 지우기
+      cell.textContent=""; given[r][c]=0; cell.classList.add("blank"); refreshMarks(); return;
+    }
+    if(given[r][c]===v){ return; }
+    if(v===solution[r][c]&&!conflict(r,c,v)){
+      cell.textContent=v; given[r][c]=v; cell.classList.remove("blank","wrong","hintflash");
+      cell.classList.add("correct","pop");
+      board.querySelectorAll(".cell").forEach(x=>{ if(x.textContent==String(v)) x.classList.add("same-num"); });
+      if(checkDone()) trainClear(lv,hintsUsed);
+      else showFeedback("ok","👍 맞았어! 계속 조사해 보자!");
+    } else {
+      if(wrongLock) return; wrongLock=true;
+      cell.classList.add("wrong");
+      setTimeout(()=>{ cell.classList.remove("wrong"); wrongLock=false; },700);
+      showFeedback("no","🤔 "+conflictWhy(r,c,v));
+    }
+  }
+  function conflict(r,c,v){
+    for(let i=0;i<n;i++) if(given[r][i]===v||given[i][c]===v) return true;
+    const br=Math.floor(r/bh)*bh, bc=Math.floor(c/bw)*bw;
+    for(let i=br;i<br+bh;i++)for(let j=bc;j<bc+bw;j++) if(given[i][j]===v) return true;
+    return false;
+  }
+  document.querySelectorAll("#numpad button").forEach(btn=>btn.onclick=()=>inputNum(+btn.dataset.n));
+  document.getElementById("tmap-btn2").onclick=trainMap;
+  document.onkeydown=e=>{
+    if(!document.getElementById("numpad")) return;
+    if(/^[1-9]$/.test(e.key)&&+e.key<=n) inputNum(+e.key);
+    if(e.key==="Backspace"||e.key==="Delete"||e.key==="0") inputNum(0);
+  };
+
+  /* ---- 3단계 돋보기 힌트 ---- */
+  document.getElementById("hint-btn").onclick=()=>{
+    if(tCleared) return;
+    hintsUsed++;
+    hintStage=Math.min(hintStage+1,3);
+    if(hintStage===1){
+      // 빈칸이 하나만 남은 줄이나 네모방 찾기
+      let found=null;
+      for(let r=0;r<n&&!found;r++){ if(given[r].filter(v=>!v).length===1) found=`${r+1}번째 가로줄`; }
+      for(let c=0;c<n&&!found;c++){ let z=0; for(let r=0;r<n;r++) if(!given[r][c]) z++; if(z===1) found=`${c+1}번째 세로줄`; }
+      for(let br2=0;br2<n&&!found;br2+=bh)for(let bc2=0;bc2<n&&!found;bc2+=bw){
+        let z=0; for(let i=br2;i<br2+bh;i++)for(let j=bc2;j<bc2+bw;j++) if(!given[i][j]) z++;
+        if(z===1) found=`${br2+1}번째 줄 근처의 네모방`;
+      }
+      showFeedback("hint","🔍 "+(found?`「${found}」에 빈칸이 딱 하나만 남았어! 거기를 먼저 봐 봐!`
+        :"빈칸이 하나만 남은 줄이나 네모방을 찾아 봐!"));
+    } else if(hintStage===2){
+      // 후보 1개 칸, 없으면 숨어있는 단일 후보 칸
+      hintCell=findHintCell(given,n,bw,bh);
+      if(hintCell){
+        const cell=cellAt(hintCell[0],hintCell[1]);
+        cell.classList.remove("hintflash"); void cell.offsetWidth; cell.classList.add("hintflash");
+        showFeedback("hint","🔍 반짝이는 칸을 봐! 이 칸엔 들어갈 수 있는 숫자가 하나뿐이야! 어떤 숫자일까?");
+      } else showFeedback("hint","🔍 가로줄, 세로줄, 네모방을 겹쳐서 살펴봐!");
+    } else {
+      if(!hintCell) hintCell=findHintCell(given,n,bw,bh);
+      if(hintCell){
+        showFeedback("hint",`🔍 반짝이던 칸의 정답은 「${solution[hintCell[0]][hintCell[1]]}」이야! 눌러서 채워 보자!`);
+        const cell=cellAt(hintCell[0],hintCell[1]);
+        cell.classList.remove("hintflash"); void cell.offsetWidth; cell.classList.add("hintflash");
+      }
+    }
+  };
+  function findHintCell(g,n2,bw2,bh2){
+    const candOf=(r,c)=>{ const out=[]; for(let v=1;v<=n2;v++){
+      let ok2=true;
+      for(let i=0;i<n2&&ok2;i++) if(g[r][i]===v||g[i][c]===v) ok2=false;
+      const br=Math.floor(r/bh2)*bh2, bc=Math.floor(c/bw2)*bw2;
+      for(let i=br;i<br+bh2&&ok2;i++)for(let j=bc;j<bc+bw2;j++) if(g[i][j]===v){ok2=false;break;}
+      if(ok2) out.push(v); } return out; };
+    for(let r=0;r<n2;r++)for(let c=0;c<n2;c++) if(!g[r][c]&&candOf(r,c).length===1) return [r,c];
+    // 숨어있는 단일 후보: 어떤 숫자가 어떤 네모방/줄에서 갈 곳이 하나뿐인 칸
+    for(let r=0;r<n2;r++)for(let c=0;c<n2;c++) if(!g[r][c]){
+      for(const v of candOf(r,c)){
+        let cnt=0;
+        for(let i=0;i<n2;i++) if(!g[r][i]&&candOf(r,i).includes(v)) cnt++;
+        if(cnt===1) return [r,c];
+      }
+    }
+    for(let r=0;r<n2;r++)for(let c=0;c<n2;c++) if(!g[r][c]) return [r,c];
+    return null;
+  }
+}
+
+function trainClear(lv,hintsUsed){
+  if(tCleared) return; tCleared=true; // 연타해도 레벨이 두 번 넘어가지 않게
+  const stars=hintsUsed===0?3:hintsUsed<=2?2:1;
+  if(!trainState.cleared.includes(lv)) trainState.cleared.push(lv);
+  if(!trainState.stars[lv]||trainState.stars[lv]<stars) trainState.stars[lv]=stars; // 더 높은 별이면 갱신
+  if(lv===9) trainState.legendBadge=true;
+  saveTrain(); renderTop();
+  showFeedback("ok","🎉 사건 해결! 대단해!");
+  const slot=document.getElementById("next-slot");
+  slot.innerHTML=`<div class="center"><span class="stamp">사건 해결!</span>
+    <p class="jua" style="font-size:1.8rem; color:#e8a13c; margin:8px">${"★".repeat(stars)}${"☆".repeat(3-stars)}</p>
+    <p>힌트 사용 ${hintsUsed}번</p><br>
+    <button class="big-btn" id="tnext-btn">${lv>=9?"👑 특별 임명장 받기!":"다음 사건!"}</button>
+    <button class="big-btn" id="tmap-btn3" style="background:#8a9aa8; border-color:#5a6a78; margin-left:8px">🗺️ 지도로</button></div>`;
+  document.getElementById("tmap-btn3").onclick=trainMap;
+  document.getElementById("tnext-btn").onclick=()=>{ if(lv>=9) legendEnding(); else trainIntro(lv+1); };
+}
+
+function legendEnding(){
+  renderTop();
+  const today=new Date();
+  const dateStr=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`;
+  screen.innerHTML=`
+    <h2 class="center">👑 전설의 탐정 탄생! 👑</h2>
+    ${chiefSays(state.name+" 탐정! 9개의 사건을 모두 해결하다니… 정말 전설이야!")}
+    <div class="center"><span class="stamp">전설 인정!</span></div>
+    <div class="cert pop">
+      <p class="jua" style="font-size:1.5rem">👑 전설의 탐정 임명장 👑</p><br>
+      <p><b>${state.name} 탐정</b>은</p>
+      <p>9개의 사건을 모두 해결하여</p>
+      <p><b>전설의 탐정</b>으로 임명합니다!</p><br>
+      <p>${dateStr}</p>
+      <p>탐정 사무소 대장 탐정 🕵️ <span class="stamp" style="font-size:.9rem">인</span></p>
+    </div>
+    <div class="center pop" style="font-size:4rem">👑</div>
+    <div class="center"><button class="big-btn" id="tmap-btn4">🗺️ 지도로 돌아가기</button></div>`;
+  document.getElementById("tmap-btn4").onclick=trainMap;
+}
+
+loadTrain();
+boot(); // 프로필 시스템 시작 (script 2에 정의, 훈련 상태 로드 후 실행)
+</script>
+<script>
+/* PWA 서비스 워커 등록 (실패해도 게임은 정상 작동)
+   ※ 이 단일 파일 버전은 sw.js / manifest.json / 아이콘 파일들이
+     같은 폴더에 함께 배포될 때만 서비스 워커가 동작합니다.
+     단독 HTML 파일로만 열 경우 등록이 실패하지만 게임에는 영향이 없습니다. */
+(function(){
+  try{
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('sw.js').catch(function(err){
+          console.log('서비스 워커 등록 실패(게임은 정상 작동합니다):', err);
+        });
+      });
+    }
+  }catch(e){
+    console.log('서비스 워커를 사용할 수 없습니다(게임은 정상 작동합니다):', e);
+  }
+})();
+</script>
+</body>
+</html>
