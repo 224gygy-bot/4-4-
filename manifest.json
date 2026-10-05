@@ -1,0 +1,17 @@
+{
+  "name": "꼬마 탐정 스도쿠",
+  "short_name": "꼬마 탐정",
+  "description": "4×4부터 9×9까지 레벨업하는 어린이 탐정 스도쿠",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff8e7",
+  "theme_color": "#e8a13c",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
